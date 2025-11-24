@@ -310,6 +310,63 @@ def vasvf_process(x, state, params):
 
 
 # ============================================================
+# SMOKE TEST / FREQUENCY RESPONSE PLOTS
+# ============================================================
+if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+
+    fs = 48000.0
+    f0 = 1000.0      # cutoff / center freq for the plot
+    Q = 0.707
+    gain_dB = 0.0
+
+    # impulse length for frequency response
+    N = 1 << 15  # 32768 samples for decent resolution
+
+    # frequency axis for rFFT
+    freq = np.fft.rfftfreq(N, 1.0 / fs)
+
+    mode_names = [
+        "LP (0)",
+        "BP (1)",
+        "HP (2)",
+        "Notch (3)",
+        "Allpass (4)",
+        "Peak (5)",
+        "Shelf (6)",
+    ]
+
+    plt.figure(figsize=(10, 6))
+
+    for mode in range(7):
+        # construct module for this mode
+        state, params = vasvf_init(fs, f0, Q, gain_dB, mode)
+
+        # impulse input
+        x = np.zeros(N, dtype=np.float64)
+        x[0] = 1.0
+
+        # run through filter
+        y, _ = vasvf_process(x, state, params)
+
+        # FFT -> magnitude response
+        H = np.fft.rfft(y)
+        mag = 20.0 * np.log10(np.maximum(np.abs(H), 1e-12))
+
+        plt.semilogx(freq, mag, label=mode_names[mode])
+
+    plt.title(f"VA-SVF Frequency Responses (f0 = {f0} Hz, Q = {Q}, gain = {gain_dB} dB)")
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("Magnitude [dB]")
+    plt.xlim(20.0, fs * 0.5)
+    plt.ylim(-60.0, 20.0)
+    plt.grid(True, which="both", ls=":", alpha=0.7)
+    plt.legend(loc="best")
+    plt.tight_layout()
+    plt.show()
+    exit()
+    
+# ============================================================
 # SMOKE TEST
 # ============================================================
 if __name__ == "__main__":
@@ -348,5 +405,4 @@ if __name__ == "__main__":
         sd.wait()
     except Exception as e:
         print("Audio playback unavailable:", e)
-
 ```
